@@ -64,6 +64,20 @@ bash scripts/frontend-dev.sh
 bash scripts/release.sh patch "Fix responsive home layout"
 ```
 
+### 8. (Optional) Manage services with PM2
+```bash
+bash scripts/pcb_pm2.sh start
+bash scripts/pcb_pm2.sh status
+bash scripts/pcb_pm2.sh logs
+bash scripts/pcb_pm2.sh stop
+```
+
+Use Streamlit mode in PM2:
+
+```bash
+bash scripts/pcb_pm2.sh start streamlit
+```
+
 To use Streamlit instead of React as the main UI:
 
 ```bash
@@ -129,6 +143,7 @@ PersonalContextBridge/
 │   ├── status.sh        # check running processes
 │   ├── test.sh          # run backend + frontend tests
 │   ├── release.sh       # bump version + update changelog
+│   ├── pcb_pm2.sh       # optional PM2 process manager for laptop/dev setup
 │   ├── frontend-dev.sh  # run React dev server
 │   └── frontend-build.sh# build React app
 ├── backend/             # Python package (all logic)

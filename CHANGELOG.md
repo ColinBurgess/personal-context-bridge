@@ -6,6 +6,9 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-04-01
+- Add PM2 controller script and docs for laptop service management
+
 ## [1.0.5] - 2026-04-01
 - Add project roadmap with optional macOS packaging track
 
