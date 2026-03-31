@@ -6,6 +6,9 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-03-31
+- Improve responsive layout and add AGENTS guidance
+
 ## [1.0.0] - 2026-03-31
 - Reorganized the project into backend, frontend, and scripts modules.
 - Added install, start, stop, status, frontend, and test scripts.

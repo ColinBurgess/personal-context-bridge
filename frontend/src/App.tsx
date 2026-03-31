@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Save, 
-  Search, 
-  Database, 
-  Tag, 
-  Clock, 
-  Cpu, 
-  AlertCircle, 
+import {
+  Save,
+  Search,
+  Database,
+  Tag,
+  Clock,
+  Cpu,
+  AlertCircle,
   CheckCircle2,
   ChevronRight,
   History,
@@ -61,7 +61,7 @@ export default function App() {
 
   useEffect(() => {
     const timer = setInterval(() => setSystemTime(new Date().toISOString()), 1000);
-    
+
     // Fake system logs
     const logInterval = setInterval(() => {
       const messages = [
@@ -122,7 +122,7 @@ export default function App() {
           timestamp: new Date().toISOString()
         }
       };
-      
+
       const updated = [newMemory, ...memories];
       setMemories(updated);
       localStorage.setItem('pcb_memories', JSON.stringify(updated));
@@ -180,7 +180,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
-      m.summary.toLowerCase().includes(query) || 
+      m.summary.toLowerCase().includes(query) ||
       m.metadata.topic_tags.some(t => t.toLowerCase().includes(query)) ||
       m.key_entities.concepts.some(c => c.toLowerCase().includes(query)) ||
       m.context_reference.toLowerCase().includes(query)
@@ -192,7 +192,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
       <div className="scanline" />
       <div className="crt-overlay" />
       <div className="noise" />
-      
+
       {/* Header */}
       <header className="border-b border-emerald-500/10 bg-black/60 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-none px-3 sm:px-6 h-16 flex items-center justify-between gap-3">
@@ -224,7 +224,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
               <span className="text-xs text-emerald-500/60 font-bold">STABLE // 42ms</span>
             </div>
           </div>
-          
+
           <nav className="flex gap-1 bg-black/40 p-1 rounded border border-emerald-500/10 overflow-x-auto max-w-[62vw] sm:max-w-none">
             {[
               { id: 'home', icon: Home, label: 'Terminal' },
@@ -235,8 +235,8 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex items-center gap-2 px-2.5 sm:px-4 py-1.5 rounded text-[9px] sm:text-[10px] uppercase tracking-widest font-bold transition-all whitespace-nowrap ${
-                  activeTab === tab.id 
-                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
+                  activeTab === tab.id
+                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
                     : 'text-zinc-600 hover:text-zinc-400 hover:bg-zinc-800/30'
                 }`}
               >
@@ -253,7 +253,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
       }`}>
         <AnimatePresence mode="wait">
           {activeTab === 'home' && (
-            <motion.div 
+            <motion.div
               key="home"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -283,7 +283,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                     spellCheck={false}
                   />
                 </div>
-                
+
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 xl:mt-auto">
                   <div className="flex items-center gap-3">
                     {status.type === 'success' && (
@@ -297,7 +297,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                       </motion.div>
                     )}
                   </div>
-                  <button 
+                  <button
                     onClick={handleSave}
                     className="w-full sm:w-auto bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 font-bold px-6 sm:px-8 py-3 rounded uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 transition-all active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.05)]"
                   >
@@ -321,8 +321,8 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                       <p className="text-zinc-700 text-[10px] uppercase tracking-widest italic">No active logs found.</p>
                     ) : (
                       memories.slice(0, 5).map((m) => (
-                        <div 
-                          key={m.id} 
+                        <div
+                          key={m.id}
                           onClick={() => setSelectedMemory(m)}
                           className="p-3 bg-emerald-500/[0.02] border border-emerald-500/5 rounded hover:border-emerald-500/30 hover:bg-emerald-500/[0.05] transition-all cursor-pointer group flex items-center justify-between gap-3"
                         >
@@ -348,12 +348,12 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                   <p className="text-[10px] text-zinc-600 leading-relaxed uppercase tracking-wider mb-4">
                     Persistence layer active. Vector indexing simulated via local_storage. Encryption protocol: AES-256.
                   </p>
-                  
+
                   <div className="grid grid-cols-2 gap-4 mb-6 border-y border-emerald-500/10 py-4">
                     <div className="flex flex-col">
                       <span className="text-[7px] text-zinc-600 uppercase tracking-widest mb-1">CPU_LOAD</span>
                       <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
-                        <motion.div 
+                        <motion.div
                           animate={{ width: ["20%", "45%", "30%", "60%", "40%"] }}
                           transition={{ duration: 5, repeat: Infinity }}
                           className="h-full bg-emerald-500/40"
@@ -363,7 +363,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                     <div className="flex flex-col">
                       <span className="text-[7px] text-zinc-600 uppercase tracking-widest mb-1">NET_TRAFFIC</span>
                       <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
-                        <motion.div 
+                        <motion.div
                           animate={{ width: ["10%", "80%", "40%", "90%", "20%"] }}
                           transition={{ duration: 3, repeat: Infinity }}
                           className="h-full bg-blue-500/40"
@@ -386,7 +386,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
           )}
 
           {activeTab === 'memories' && (
-            <motion.div 
+            <motion.div
               key="memories"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -396,7 +396,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
               <div className="max-w-2xl mx-auto">
                 <div className="relative group">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500/40 group-focus-within:text-emerald-500 transition-colors" size={18} />
-                  <input 
+                  <input
                     type="text"
                     placeholder="SEARCH_DATABASE // ENTER_QUERY..."
                     value={searchQuery}
@@ -404,7 +404,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                     className="w-full bg-black/40 border border-emerald-500/10 rounded py-4 pl-12 pr-4 text-emerald-500/80 placeholder:text-zinc-700 focus:outline-none focus:border-emerald-500/40 transition-all tactical-border uppercase text-[10px] tracking-widest font-bold"
                   />
                   {searchQuery && (
-                    <button 
+                    <button
                       onClick={() => setSearchQuery('')}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-emerald-500 transition-colors text-[8px] font-bold uppercase tracking-widest"
                     >
@@ -417,7 +417,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredMemories.length > 0 ? (
                   filteredMemories.map((res) => (
-                    <motion.div 
+                    <motion.div
                       layout
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -427,8 +427,8 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                       key={res.id}
                     >
                       <div className="absolute top-0 left-0 w-full h-[1px] bg-emerald-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      
-                      <button 
+
+                      <button
                         onClick={(e) => handleDelete(res.id, e)}
                         className="absolute top-4 right-4 p-2 text-zinc-800 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-black/60 rounded"
                         title="Purge_Record"
@@ -444,9 +444,9 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                         </div>
                         <span className="text-[8px] text-zinc-700 font-bold shrink-0">{res.id}</span>
                       </div>
-                      
+
                       <h4 className="text-zinc-300 text-[11px] font-bold mb-4 group-hover:text-emerald-500 transition-colors line-clamp-2 uppercase tracking-wider">{res.summary}</h4>
-                      
+
                       <div className="space-y-3 flex-grow">
                         <div className="bg-emerald-500/[0.02] p-3 rounded border border-emerald-500/5">
                           <span className="text-[7px] uppercase text-zinc-600 block mb-1 font-bold tracking-widest">Concepts_Index</span>
@@ -465,7 +465,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                           {res.metadata.priority}
                         </span>
                       </div>
-                      
+
                       <div className="mt-4 pt-4 border-t border-emerald-500/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
                         <span className="text-[8px] text-emerald-500 font-bold uppercase tracking-[0.3em] flex items-center gap-2">
                           Access_Record <ChevronRight size={10} />
@@ -477,8 +477,8 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                   <div className="col-span-full text-center py-20 bg-black/20 border border-dashed border-emerald-500/10 rounded tactical-border">
                     <Database className="mx-auto text-zinc-800 mb-4" size={32} />
                     <p className="text-zinc-600 text-[10px] uppercase tracking-[0.2em] font-bold">
-                      {memories.length === 0 
-                        ? "Database_Empty // No_Records_Found" 
+                      {memories.length === 0
+                        ? "Database_Empty // No_Records_Found"
                         : `Query_Null // No_Matches_For "${searchQuery}"`}
                     </p>
                   </div>
@@ -488,7 +488,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
           )}
 
           {activeTab === 'graph' && (
-            <motion.div 
+            <motion.div
               key="graph"
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -510,11 +510,11 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex-grow relative bg-black/40 rounded border border-emerald-500/5">
                   <GraphVisualization memories={memories} />
                 </div>
-                
+
                 <div className="mt-4 sm:mt-6 px-1 sm:px-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex gap-4 sm:gap-6 flex-wrap">
                     <div className="flex items-center gap-2">
@@ -542,14 +542,14 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
       <AnimatePresence>
         {selectedMemory && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedMemory(null)}
               className="absolute inset-0 bg-black/90 backdrop-blur-md"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -565,7 +565,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                     <p className="text-[8px] text-zinc-600 font-bold uppercase tracking-[0.3em]">{selectedMemory.id} // SECURE_ACCESS</p>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => setSelectedMemory(null)}
                   className="p-2 hover:bg-emerald-500/10 rounded text-zinc-600 hover:text-emerald-500 transition-colors"
                 >
@@ -621,14 +621,14 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
               </div>
 
               <div className="p-6 bg-emerald-500/[0.02] border-t border-emerald-500/10 flex flex-col sm:flex-row gap-3 shrink-0">
-                <button 
+                <button
                   onClick={() => copyLLMContext(selectedMemory)}
                   className="flex-[2] bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 font-bold py-3 rounded uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 transition-all active:scale-95"
                 >
                   <Share2 size={14} />
                   Export_Context
                 </button>
-                <button 
+                <button
                   onClick={() => copyToClipboard(JSON.stringify(selectedMemory, null, 2))}
                   className="flex-1 bg-black/40 hover:bg-zinc-800 text-zinc-500 border border-zinc-800 font-bold py-3 rounded uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 transition-all active:scale-95"
                 >
@@ -658,7 +658,7 @@ function GraphVisualization({ memories }: { memories: Memory[] }) {
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
-    
+
     // Set viewBox to match actual dimensions
     svg.attr("viewBox", `0 0 ${width} ${height}`);
 
@@ -740,11 +740,11 @@ function GraphVisualization({ memories }: { memories: Memory[] }) {
 
     // Add tactical crosshair lines for context nodes
     const contextNodes = node.filter((d: any) => d.type === 'context');
-    
+
     contextNodes.append("line")
       .attr("x1", -12).attr("y1", 0).attr("x2", 12).attr("y2", 0)
       .attr("stroke", "#10b981").attr("stroke-width", 0.5).attr("opacity", 0.3);
-      
+
     contextNodes.append("line")
       .attr("x1", 0).attr("y1", -12).attr("x2", 0).attr("y2", 12)
       .attr("stroke", "#10b981").attr("stroke-width", 0.5).attr("opacity", 0.3);
@@ -849,21 +849,21 @@ function GraphVisualization({ memories }: { memories: Memory[] }) {
   return (
     <div ref={containerRef} className="w-full h-full relative group">
       <div className="absolute top-2 sm:top-4 right-2 sm:right-4 flex flex-col gap-2 z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-        <button 
+        <button
           onClick={() => handleZoom(1.2)}
           className="p-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-700 transition-all"
           title="Zoom In"
         >
           <ZoomIn size={18} />
         </button>
-        <button 
+        <button
           onClick={() => handleZoom(0.8)}
           className="p-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-700 transition-all"
           title="Zoom Out"
         >
           <ZoomOut size={18} />
         </button>
-        <button 
+        <button
           onClick={handleReset}
           className="p-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-700 transition-all"
           title="Reset View"
@@ -871,9 +871,9 @@ function GraphVisualization({ memories }: { memories: Memory[] }) {
           <RefreshCw size={18} />
         </button>
       </div>
-      
-      <svg 
-        ref={svgRef} 
+
+      <svg
+        ref={svgRef}
         className="w-full h-full"
       />
     </div>
