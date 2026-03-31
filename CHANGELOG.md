@@ -6,6 +6,9 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-04-01
+- Improve input UX with example placeholder and guarded save flow
+
 ## [1.0.3] - 2026-03-31
 - Add LLM instructions modal and copy press feedback
 

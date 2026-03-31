@@ -60,6 +60,24 @@ export default function App() {
   const [showLlmInstructions, setShowLlmInstructions] = useState(false);
   const [systemTime, setSystemTime] = useState(new Date().toISOString());
   const [logs, setLogs] = useState<string[]>([]);
+  const isJsonInputEmpty = !jsonInput.trim();
+
+  const exampleJsonPlaceholder = `{
+  "metadata": {
+    "timestamp": "2026-04-01T00:00:00Z",
+    "model_used": "gpt-5.3-codex",
+    "topic_tags": ["Project Setup", "Best Practices"],
+    "priority": "High"
+  },
+  "summary": "Example memory summary.",
+  "key_entities": {
+    "concepts": ["Testing", "Versioning"],
+    "tools": ["pytest", "vitest"],
+    "decisions": ["Define clear folder structure"],
+    "pending_actions": ["Create initial CI pipeline"]
+  },
+  "context_reference": "Example Context"
+}`;
 
   const llmInstructions = `Generate exactly one valid JSON object for the memory system.
 
@@ -116,32 +134,19 @@ Rules:
     };
   }, []);
 
-  // Initial Example
-  const defaultJson = {
-    metadata: {
-      timestamp: new Date().toISOString(),
-      model_used: "Gemini 1.5 Pro",
-      topic_tags: ["React", "PCB", "Architecture"],
-      priority: "High"
-    },
-    summary: "UI Design for the Personal Context Bridge using React and Tailwind.",
-    key_entities: {
-      concepts: ["SPA", "Vector Search Simulation"],
-      tools: ["Lucide", "Motion"],
-      decisions: ["Use tabs for navigation"],
-      pending_actions: ["Connect to real backend"]
-    },
-    context_reference: "Frontend Development"
-  };
-
   useEffect(() => {
-    setJsonInput(JSON.stringify(defaultJson, null, 2));
     // Load memories from localStorage if they exist
     const saved = localStorage.getItem('pcb_memories');
     if (saved) setMemories(JSON.parse(saved));
   }, []);
 
   const handleSave = () => {
+    if (!jsonInput.trim()) {
+      setStatus({ type: 'error', message: 'Write your own JSON memory before saving.' });
+      setTimeout(() => setStatus({ type: null, message: '' }), 3000);
+      return;
+    }
+
     try {
       const parsed = JSON.parse(jsonInput);
       const newMemory: Memory = {
@@ -316,7 +321,8 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                   <textarea
                     value={jsonInput}
                     onChange={(e) => setJsonInput(e.target.value)}
-                    className="w-full h-[clamp(300px,50vh,640px)] xl:h-full bg-transparent p-3 sm:p-6 font-mono text-[12px] sm:text-sm text-emerald-500/80 focus:outline-none resize-none leading-relaxed custom-scrollbar"
+                    placeholder={exampleJsonPlaceholder}
+                    className="w-full h-[clamp(300px,50vh,640px)] xl:h-full bg-transparent p-3 sm:p-6 font-mono text-[12px] sm:text-sm text-emerald-500/80 placeholder:text-zinc-500/70 focus:outline-none resize-none leading-relaxed custom-scrollbar"
                     spellCheck={false}
                   />
                 </div>
@@ -344,7 +350,8 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                     </button>
                     <button
                       onClick={handleSave}
-                      className="w-full sm:w-auto bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 font-bold px-6 sm:px-8 py-3 rounded uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 transition-all active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.05)]"
+                      disabled={isJsonInputEmpty}
+                      className="w-full sm:w-auto bg-emerald-500/10 hover:bg-emerald-500/20 disabled:hover:bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 disabled:text-zinc-600 disabled:border-zinc-800 disabled:cursor-not-allowed font-bold px-6 sm:px-8 py-3 rounded uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 transition-all active:scale-95 disabled:active:scale-100 shadow-[0_0_20px_rgba(16,185,129,0.05)]"
                     >
                       <Save size={16} />
                       Commit_Memory
