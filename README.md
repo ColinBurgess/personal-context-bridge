@@ -159,6 +159,8 @@ PersonalContextBridge/
 
 ## 📝 Memory JSON Format
 
+Tip: In the React home screen, use the `LLM_Instructions` button to open a copy-ready prompt that helps external LLMs generate valid memory JSON for this schema.
+
 ```json
 {
   "metadata": {

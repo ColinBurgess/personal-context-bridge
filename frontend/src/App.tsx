@@ -57,8 +57,37 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'memories' | 'graph'>('home');
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Memory | null>(null);
+  const [showLlmInstructions, setShowLlmInstructions] = useState(false);
   const [systemTime, setSystemTime] = useState(new Date().toISOString());
   const [logs, setLogs] = useState<string[]>([]);
+
+  const llmInstructions = `Generate exactly one valid JSON object for the memory system.
+
+Return only JSON. Do not include markdown fences, explanations, or extra text.
+
+Required schema:
+{
+  "metadata": {
+    "timestamp": "ISO-8601 datetime string",
+    "model_used": "string",
+    "topic_tags": ["string", "string"],
+    "priority": "High | Medium | Low"
+  },
+  "summary": "string",
+  "key_entities": {
+    "concepts": ["string"],
+    "tools": ["string"],
+    "decisions": ["string"],
+    "pending_actions": ["string"]
+  },
+  "context_reference": "string"
+}
+
+Rules:
+- Keep arrays non-empty when information exists.
+- Keep summary concise but specific.
+- Use plain strings only.
+- Ensure JSON is syntactically valid.`;
 
   useEffect(() => {
     const timer = setInterval(() => setSystemTime(new Date().toISOString()), 1000);
@@ -305,13 +334,22 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                       </motion.div>
                     )}
                   </div>
-                  <button
-                    onClick={handleSave}
-                    className="w-full sm:w-auto bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 font-bold px-6 sm:px-8 py-3 rounded uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 transition-all active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.05)]"
-                  >
-                    <Save size={16} />
-                    Commit_Memory
-                  </button>
+                  <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => setShowLlmInstructions(true)}
+                      className="w-full sm:w-auto bg-black/40 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 font-bold px-6 py-3 rounded uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 transition-all"
+                    >
+                      <Terminal size={16} />
+                      LLM_Instructions
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      className="w-full sm:w-auto bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 font-bold px-6 sm:px-8 py-3 rounded uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 transition-all active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.05)]"
+                    >
+                      <Save size={16} />
+                      Commit_Memory
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -545,6 +583,65 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
           )}
         </AnimatePresence>
       </main>
+
+      {/* LLM Instructions Modal */}
+      <AnimatePresence>
+        {showLlmInstructions && (
+          <div className="fixed inset-0 z-[108] flex items-center justify-center p-4 md:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLlmInstructions(false)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-3xl bg-[#05070a] border border-emerald-500/20 rounded shadow-2xl overflow-hidden flex flex-col max-h-[90vh] tactical-border"
+            >
+              <div className="flex items-center justify-between p-5 border-b border-emerald-500/10 bg-emerald-500/5 shrink-0">
+                <div className="flex items-center gap-3">
+                  <Terminal size={16} className="text-emerald-500" />
+                  <h3 className="text-sm font-bold text-emerald-400 uppercase tracking-[0.2em]">LLM_Instructions</h3>
+                </div>
+                <button
+                  onClick={() => setShowLlmInstructions(false)}
+                  className="p-2 hover:bg-emerald-500/10 rounded text-zinc-600 hover:text-emerald-500 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-grow">
+                <p className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mb-4">
+                  Copy this prompt and paste it into your LLM to generate valid memory JSON.
+                </p>
+                <pre className="text-[11px] sm:text-xs text-emerald-500/80 bg-black/40 border border-emerald-500/10 rounded p-4 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                  {llmInstructions}
+                </pre>
+              </div>
+
+              <div className="p-5 border-t border-emerald-500/10 flex flex-col sm:flex-row gap-3 shrink-0">
+                <button
+                  onClick={() => setShowLlmInstructions(false)}
+                  className="flex-1 bg-black/40 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 font-bold py-2.5 rounded uppercase tracking-[0.2em] text-[10px] transition-all"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => copyToClipboard(llmInstructions)}
+                  className="flex-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 font-bold py-2.5 rounded uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-2 transition-all active:scale-95 active:translate-y-px"
+                >
+                  <Copy size={14} />
+                  Copy_Instructions
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Delete Confirmation Modal */}
       <AnimatePresence>

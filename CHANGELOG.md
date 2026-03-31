@@ -6,6 +6,9 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-03-31
+- Add LLM instructions modal and copy press feedback
+
 ## [1.0.2] - 2026-03-31
 - Add delete confirmation modal in database view
 
