@@ -187,6 +187,12 @@ Contributions are welcome! Feel free to open issues or submit pull requests.
 
 ---
 
+## 🗺️ Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for the execution plan, including optional future tracks such as macOS `.pkg` packaging and other non-packaging improvements.
+
+---
+
 ## ✅ Operational Best Practices
 
 1. Always run `bash scripts/install.sh` after pulling changes.
