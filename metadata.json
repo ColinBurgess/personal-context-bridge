@@ -1,0 +1,5 @@
+{
+  "name": "Personal Context Bridge (PCB)",
+  "description": "A local memory tool using FastAPI, ChromaDB, and Streamlit with MCP support for persistent AI context.",
+  "requestFramePermissions": []
+}
