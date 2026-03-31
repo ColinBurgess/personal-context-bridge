@@ -6,6 +6,9 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-03-31
+- Add delete confirmation modal in database view
+
 ## [1.0.1] - 2026-03-31
 - Improve responsive layout and add AGENTS guidance
 

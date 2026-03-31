@@ -56,6 +56,7 @@ export default function App() {
   const [status, setStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' });
   const [activeTab, setActiveTab] = useState<'home' | 'memories' | 'graph'>('home');
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Memory | null>(null);
   const [systemTime, setSystemTime] = useState(new Date().toISOString());
   const [logs, setLogs] = useState<string[]>([]);
 
@@ -133,12 +134,19 @@ export default function App() {
     }
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const requestDelete = (memory: Memory, e: React.MouseEvent) => {
     e.stopPropagation();
-    const updated = memories.filter(m => m.id !== id);
+    setPendingDelete(memory);
+  };
+
+  const confirmDelete = () => {
+    if (!pendingDelete) return;
+
+    const updated = memories.filter(m => m.id !== pendingDelete.id);
     setMemories(updated);
     localStorage.setItem('pcb_memories', JSON.stringify(updated));
-    if (selectedMemory?.id === id) setSelectedMemory(null);
+    if (selectedMemory?.id === pendingDelete.id) setSelectedMemory(null);
+    setPendingDelete(null);
     setStatus({ type: 'success', message: 'Memory deleted.' });
     setTimeout(() => setStatus({ type: null, message: '' }), 2000);
   };
@@ -429,8 +437,8 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                       <div className="absolute top-0 left-0 w-full h-[1px] bg-emerald-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
 
                       <button
-                        onClick={(e) => handleDelete(res.id, e)}
-                        className="absolute top-4 right-4 p-2 text-zinc-800 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-black/60 rounded"
+                        onClick={(e) => requestDelete(res, e)}
+                        className="absolute top-4 right-4 p-2 text-zinc-500 hover:text-red-500 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 bg-black/60 rounded border border-zinc-700/60"
                         title="Purge_Record"
                       >
                         <Trash2 size={12} />
@@ -537,6 +545,59 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
           )}
         </AnimatePresence>
       </main>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {pendingDelete && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPendingDelete(null)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-[#05070a] border border-red-500/30 rounded shadow-2xl overflow-hidden tactical-border"
+            >
+              <div className="flex items-center gap-3 p-5 border-b border-red-500/20 bg-red-500/[0.04]">
+                <Trash2 size={16} className="text-red-400" />
+                <h3 className="text-sm font-bold text-red-300 uppercase tracking-[0.2em]">Confirm_Delete</h3>
+              </div>
+
+              <div className="p-5 space-y-3">
+                <p className="text-[11px] text-zinc-400 uppercase tracking-wide">
+                  You are about to remove this memory entry permanently.
+                </p>
+                <p className="text-[10px] text-zinc-500 break-all">
+                  ID: {pendingDelete.id}
+                </p>
+                <p className="text-[10px] text-zinc-500 line-clamp-2">
+                  {pendingDelete.summary}
+                </p>
+              </div>
+
+              <div className="p-5 border-t border-zinc-800 flex gap-3">
+                <button
+                  onClick={() => setPendingDelete(null)}
+                  className="flex-1 bg-black/40 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 font-bold py-2.5 rounded uppercase tracking-[0.2em] text-[10px] transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/40 font-bold py-2.5 rounded uppercase tracking-[0.2em] text-[10px] transition-all"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Memory Detail Modal */}
       <AnimatePresence>
