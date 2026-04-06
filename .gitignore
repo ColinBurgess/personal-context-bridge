@@ -9,6 +9,7 @@ coverage/
 .venv/
 .pcb_pids
 local_memory/
+backups/
 __pycache__/
 *.pyc
 .pytest_cache/

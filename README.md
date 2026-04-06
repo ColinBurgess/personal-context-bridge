@@ -11,6 +11,8 @@ Personal Context Bridge (PCB) is a local AI context management system that lets 
 | **REST API** | FastAPI backend with auto-generated OpenAPI docs |
 | **Web UI** | Streamlit interface for manual interaction |
 | **Knowledge Graph** | Visualize relationships between topics and contexts |
+| **Filesystem Persistence** | Memories are stored in local ChromaDB files under `local_memory/` |
+| **Backup/Restore** | Export and import memories using backup JSON files |
 | **MCP Support** | Model Context Protocol server — plug directly into Claude Desktop or any MCP-compatible agent |
 
 ---
@@ -64,7 +66,16 @@ bash scripts/frontend-dev.sh
 bash scripts/release.sh patch "Fix responsive home layout"
 ```
 
-### 8. (Optional) Manage services with PM2
+### 8. Backup and restore memories
+```bash
+bash scripts/backup.sh
+bash scripts/restore.sh backups/pcb_memories_YYYYMMDD_HHMMSS.json append
+```
+
+`append` adds memories from backup to existing data.
+`replace` wipes current memories first, then imports backup content.
+
+### 9. (Optional) Manage services with PM2
 ```bash
 bash scripts/pcb_pm2.sh start
 bash scripts/pcb_pm2.sh status
@@ -143,6 +154,9 @@ PersonalContextBridge/
 │   ├── status.sh        # check running processes
 │   ├── test.sh          # run backend + frontend tests
 │   ├── release.sh       # bump version + update changelog
+│   ├── backup.sh        # export memories to backup JSON
+│   ├── restore.sh       # import memories from backup JSON
+│   ├── memory_backup.py # backup/restore implementation utility
 │   ├── pcb_pm2.sh       # optional PM2 process manager for laptop/dev setup
 │   ├── frontend-dev.sh  # run React dev server
 │   └── frontend-build.sh# build React app
@@ -218,4 +232,5 @@ See [ROADMAP.md](ROADMAP.md) for the execution plan, including optional future t
 6. Use scripts from `scripts/` instead of ad-hoc commands for consistency.
 7. For local development, keep one terminal for backend/UI and another for frontend React dev server.
 8. Configure MCP using the Python executable inside `.venv` to avoid dependency mismatches.
+9. Run `bash scripts/backup.sh` before migrations or destructive maintenance.
 

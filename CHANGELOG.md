@@ -6,6 +6,21 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-04-06
+- Migrate memory storage from localStorage to ChromaDB filesystem persistence
+- Add backup and restore endpoints (`POST /backup_memories`, `POST /restore_memories`) with append/replace modes
+- Add `DELETE /delete_memory/{memory_id}` API endpoint
+- Add CORS middleware for Vite dev proxy compatibility
+- Add Vite proxy config routing `/api/*` to backend to avoid CORS issues in dev
+- Add `fetchWithTimeout()` with AbortController (15s) to prevent silent UI hangs
+- Decouple save success feedback from post-save list refresh (non-blocking)
+- Add `normalizeMemory()` to handle legacy ChromaDB entries without `full_memory` field
+- Add real operation logs in UI replacing fake messages (`ClientLog` + `addLog()`)
+- Add status banner in Database tab for delete and error feedback
+- Add `scripts/backup.sh`, `scripts/restore.sh`, `scripts/memory_backup.py` utilities
+- Expand test suite: 9 frontend regression tests + 16 backend unit/integration tests
+- Add `tests/test_persistence_integration.py` for real filesystem save/delete verification
+
 ## [1.0.6] - 2026-04-01
 - Add PM2 controller script and docs for laptop service management
 

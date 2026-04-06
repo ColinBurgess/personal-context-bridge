@@ -55,3 +55,43 @@ async def test_save_memory_endpoint_maps_errors_to_http_500(monkeypatch, sample_
 
     assert response.status_code == 500
     assert response.json()["detail"] == "boom"
+
+
+@pytest.mark.anyio
+async def test_delete_memory_endpoint_returns_success(monkeypatch):
+    monkeypatch.setattr(api, "delete_memory", lambda memory_id: {"status": "success", "id": memory_id})
+
+    async with await _get_client() as client:
+        response = await client.delete("/delete_memory/mem_1")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "success", "id": "mem_1"}
+
+
+@pytest.mark.anyio
+async def test_delete_memory_endpoint_returns_404_for_missing_memory(monkeypatch):
+    def raise_not_found(_memory_id):
+        raise ValueError("missing")
+
+    monkeypatch.setattr(api, "delete_memory", raise_not_found)
+
+    async with await _get_client() as client:
+        response = await client.delete("/delete_memory/mem_404")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "missing"
+
+
+@pytest.mark.anyio
+async def test_backup_restore_endpoints(monkeypatch):
+    monkeypatch.setattr(api, "backup_memories_to_file", lambda path: {"status": "success", "file": path, "count": 1})
+    monkeypatch.setattr(api, "restore_memories_from_file", lambda path, mode: {"status": "success", "source_file": path, "mode": mode, "imported": 1})
+
+    async with await _get_client() as client:
+        backup_response = await client.post("/backup_memories", json={"file_path": "backups/test.json"})
+        restore_response = await client.post("/restore_memories", json={"file_path": "backups/test.json", "mode": "append"})
+
+    assert backup_response.status_code == 200
+    assert backup_response.json()["status"] == "success"
+    assert restore_response.status_code == 200
+    assert restore_response.json()["imported"] == 1

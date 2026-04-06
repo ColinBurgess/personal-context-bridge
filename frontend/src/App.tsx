@@ -49,6 +49,71 @@ interface Memory {
   context_reference: string;
 }
 
+interface ClientLog {
+  timestamp: string;
+  level: 'info' | 'success' | 'error';
+  message: string;
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_TIMEOUT_MS = 15000;
+
+const normalizeStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string');
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((item): item is string => typeof item === 'string');
+      }
+      return [value];
+    } catch {
+      return [value];
+    }
+  }
+  return [];
+};
+
+const normalizeMemory = (raw: unknown): Memory | null => {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const data = raw as Record<string, unknown>;
+  const metadata = (data.metadata && typeof data.metadata === 'object')
+    ? (data.metadata as Record<string, unknown>)
+    : {};
+  const keyEntities = (data.key_entities && typeof data.key_entities === 'object')
+    ? (data.key_entities as Record<string, unknown>)
+    : ((metadata.key_entities && typeof metadata.key_entities === 'object')
+      ? (metadata.key_entities as Record<string, unknown>)
+      : {});
+
+  const id = typeof data.id === 'string' ? data.id : `legacy_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const summary = typeof data.summary === 'string' ? data.summary : 'Legacy memory entry';
+  const contextReference = typeof data.context_reference === 'string'
+    ? data.context_reference
+    : (typeof metadata.context_reference === 'string' ? metadata.context_reference : 'Legacy Memory');
+
+  return {
+    id,
+    metadata: {
+      timestamp: typeof metadata.timestamp === 'string' ? metadata.timestamp : new Date().toISOString(),
+      model_used: typeof metadata.model_used === 'string' ? metadata.model_used : 'unknown',
+      topic_tags: normalizeStringArray(metadata.topic_tags),
+      priority: typeof metadata.priority === 'string' ? metadata.priority : 'Medium',
+    },
+    summary,
+    key_entities: {
+      concepts: normalizeStringArray(keyEntities.concepts),
+      tools: normalizeStringArray(keyEntities.tools),
+      decisions: normalizeStringArray(keyEntities.decisions),
+      pending_actions: normalizeStringArray(keyEntities.pending_actions),
+    },
+    context_reference: contextReference,
+  };
+};
+
 export default function App() {
   const [jsonInput, setJsonInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,8 +124,65 @@ export default function App() {
   const [pendingDelete, setPendingDelete] = useState<Memory | null>(null);
   const [showLlmInstructions, setShowLlmInstructions] = useState(false);
   const [systemTime, setSystemTime] = useState(new Date().toISOString());
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<ClientLog[]>([]);
   const isJsonInputEmpty = !jsonInput.trim();
+
+  const addLog = (message: string, level: ClientLog['level'] = 'info') => {
+    const entry: ClientLog = {
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+    };
+    setLogs(prev => [entry, ...prev].slice(0, 40));
+  };
+
+  const getErrorMessage = (error: unknown, fallback: string): string => {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return 'Request timed out while contacting backend API.';
+    }
+    if (error instanceof TypeError && error.message.toLowerCase().includes('fetch')) {
+      return 'Cannot reach backend API. Ensure PCB backend is running.';
+    }
+    if (error instanceof Error && error.message.trim()) {
+      return error.message;
+    }
+    return fallback;
+  };
+
+  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = API_TIMEOUT_MS): Promise<Response> => {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      return await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+  };
+
+  const loadMemoriesFromBackend = async () => {
+    addLog('Loading memories from backend...', 'info');
+    try {
+      const response = await fetchWithTimeout(`${API_BASE_URL}/get_all_memories`);
+      if (!response.ok) {
+        throw new Error('Failed to load memories from backend');
+      }
+
+      const data = await response.json();
+      const normalized = Array.isArray(data)
+        ? data.map(normalizeMemory).filter((item): item is Memory => item !== null)
+        : [];
+      setMemories(normalized);
+      addLog(`Loaded ${normalized.length} memories from backend.`, 'success');
+    } catch (error) {
+      addLog(getErrorMessage(error, 'Could not load memories from local backend.'), 'error');
+      setStatus({ type: 'error', message: getErrorMessage(error, 'Could not load memories from local backend.') });
+      setTimeout(() => setStatus({ type: null, message: '' }), 3000);
+    }
+  };
 
   const exampleJsonPlaceholder = `{
   "metadata": {
@@ -110,37 +232,35 @@ Rules:
   useEffect(() => {
     const timer = setInterval(() => setSystemTime(new Date().toISOString()), 1000);
 
-    // Fake system logs
-    const logInterval = setInterval(() => {
-      const messages = [
-        "ENCRYPTING_DATA_PACKET...",
-        "VECTOR_INDEX_SYNC_COMPLETE",
-        "SIGNAL_STRENGTH_OPTIMAL",
-        "UPDATING_NETWORK_TOPOLOGY",
-        "SECURE_LINK_ESTABLISHED",
-        "SCANNING_DATABASE_NODES",
-        "MEMORY_BUFFER_STABLE",
-        "ENCRYPTION_KEY_ROTATED",
-        "ACCESS_LOG_UPDATED",
-        "HEARTBEAT_SIGNAL_DETECTED"
-      ];
-      const randomMsg = messages[Math.floor(Math.random() * messages.length)];
-      setLogs(prev => [randomMsg, ...prev].slice(0, 5));
-    }, 4000);
-
     return () => {
       clearInterval(timer);
-      clearInterval(logInterval);
     };
   }, []);
 
   useEffect(() => {
-    // Load memories from localStorage if they exist
-    const saved = localStorage.getItem('pcb_memories');
-    if (saved) setMemories(JSON.parse(saved));
+    void loadMemoriesFromBackend();
   }, []);
 
-  const handleSave = () => {
+  const parseMemoryInput = (rawInput: string): Record<string, unknown> => {
+    const firstPass = JSON.parse(rawInput);
+
+    // Allow quoted JSON payloads pasted as a string (double-encoded JSON).
+    if (typeof firstPass === 'string') {
+      const secondPass = JSON.parse(firstPass);
+      if (!secondPass || typeof secondPass !== 'object' || Array.isArray(secondPass)) {
+        throw new Error('Input must be a JSON object');
+      }
+      return secondPass as Record<string, unknown>;
+    }
+
+    if (!firstPass || typeof firstPass !== 'object' || Array.isArray(firstPass)) {
+      throw new Error('Input must be a JSON object');
+    }
+
+    return firstPass as Record<string, unknown>;
+  };
+
+  const handleSave = async () => {
     if (!jsonInput.trim()) {
       setStatus({ type: 'error', message: 'Write your own JSON memory before saving.' });
       setTimeout(() => setStatus({ type: null, message: '' }), 3000);
@@ -148,23 +268,45 @@ Rules:
     }
 
     try {
-      const parsed = JSON.parse(jsonInput);
-      const newMemory: Memory = {
-        ...parsed,
-        id: `mem_${Date.now()}`,
-        metadata: {
-          ...parsed.metadata,
-          timestamp: new Date().toISOString()
-        }
-      };
+      const parsed = parseMemoryInput(jsonInput);
+      const payload = { ...parsed };
+      delete (payload as { id?: unknown }).id;
+      addLog('Sending save request to backend...', 'info');
 
-      const updated = [newMemory, ...memories];
-      setMemories(updated);
-      localStorage.setItem('pcb_memories', JSON.stringify(updated));
-      setStatus({ type: 'success', message: 'Memory saved to browser local storage!' });
+      const response = await fetchWithTimeout(`${API_BASE_URL}/save_memory`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        let detail = 'Save request failed';
+        try {
+          const errorPayload = await response.json();
+          if (errorPayload?.detail && typeof errorPayload.detail === 'string') {
+            detail = errorPayload.detail;
+          }
+        } catch (_parseError) {
+          // Ignore non-JSON error payloads.
+        }
+        throw new Error(detail);
+      }
+
+      const saveResult = await response.json().catch(() => ({} as Record<string, unknown>));
+      const savedId = typeof saveResult.id === 'string' ? saveResult.id : 'unknown_id';
+      addLog(`Memory saved successfully (id: ${savedId}).`, 'success');
+      setStatus({ type: 'success', message: 'Memory saved to local filesystem database.' });
       setTimeout(() => setStatus({ type: null, message: '' }), 3000);
-    } catch (e) {
-      setStatus({ type: 'error', message: 'JSON format error. Please check your syntax.' });
+
+      // Refresh list in the background so a slow list endpoint does not block save feedback.
+      void loadMemoriesFromBackend();
+    } catch (error) {
+      const message = getErrorMessage(error, 'Save failed. Verify JSON and backend availability.');
+      addLog(`Save failed: ${message}`, 'error');
+      setStatus({ type: 'error', message });
+      setTimeout(() => setStatus({ type: null, message: '' }), 3000);
     }
   };
 
@@ -173,16 +315,41 @@ Rules:
     setPendingDelete(memory);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!pendingDelete) return;
 
-    const updated = memories.filter(m => m.id !== pendingDelete.id);
-    setMemories(updated);
-    localStorage.setItem('pcb_memories', JSON.stringify(updated));
-    if (selectedMemory?.id === pendingDelete.id) setSelectedMemory(null);
-    setPendingDelete(null);
-    setStatus({ type: 'success', message: 'Memory deleted.' });
-    setTimeout(() => setStatus({ type: null, message: '' }), 2000);
+    try {
+      addLog(`Deleting memory ${pendingDelete.id}...`, 'info');
+      const response = await fetchWithTimeout(`${API_BASE_URL}/delete_memory/${encodeURIComponent(pendingDelete.id)}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        let detail = 'Delete request failed';
+        try {
+          const errorPayload = await response.json();
+          if (errorPayload?.detail && typeof errorPayload.detail === 'string') {
+            detail = errorPayload.detail;
+          }
+        } catch (_parseError) {
+          // Ignore non-JSON error payloads.
+        }
+        throw new Error(detail);
+      }
+
+      await loadMemoriesFromBackend();
+      if (selectedMemory?.id === pendingDelete.id) setSelectedMemory(null);
+      setPendingDelete(null);
+      addLog('Memory deleted successfully.', 'success');
+      setStatus({ type: 'success', message: 'Memory deleted.' });
+      setTimeout(() => setStatus({ type: null, message: '' }), 2000);
+    } catch (error) {
+      setPendingDelete(null);
+      const message = getErrorMessage(error, 'Delete failed. Backend may be unavailable.');
+      addLog(`Delete failed: ${message}`, 'error');
+      setStatus({ type: 'error', message });
+      setTimeout(() => setStatus({ type: null, message: '' }), 3000);
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -221,10 +388,12 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
   const filteredMemories = memories.filter(m => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
+    const topicTags = m.metadata?.topic_tags ?? [];
+    const concepts = m.key_entities?.concepts ?? [];
     return (
       m.summary.toLowerCase().includes(query) ||
-      m.metadata.topic_tags.some(t => t.toLowerCase().includes(query)) ||
-      m.key_entities.concepts.some(c => c.toLowerCase().includes(query)) ||
+      topicTags.some(t => t.toLowerCase().includes(query)) ||
+      concepts.some(c => c.toLowerCase().includes(query)) ||
       m.context_reference.toLowerCase().includes(query)
     );
   });
@@ -399,7 +568,7 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                     System_Notice
                   </h4>
                   <p className="text-[10px] text-zinc-600 leading-relaxed uppercase tracking-wider mb-4">
-                    Persistence layer active. Vector indexing simulated via local_storage. Encryption protocol: AES-256.
+                    Persistence layer active. Memories are stored in local filesystem via backend vector database.
                   </p>
 
                   <div className="grid grid-cols-2 gap-4 mb-6 border-y border-emerald-500/10 py-4">
@@ -426,10 +595,14 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                   </div>
 
                   <div className="space-y-1 border-t border-emerald-500/10 pt-4">
-                    {logs.map((log, i) => (
-                      <div key={i} className={`text-[8px] font-bold uppercase tracking-widest flex items-center gap-2 ${i === 0 ? 'text-emerald-500' : 'text-zinc-700'}`}>
-                        <span className="text-[6px] opacity-50">[{new Date().toLocaleTimeString()}]</span>
-                        <span className={i === 0 ? 'animate-pulse' : ''}>{log}</span>
+                    {logs.length === 0 ? (
+                      <div className="text-[8px] text-zinc-700 uppercase tracking-widest">No operation logs yet.</div>
+                    ) : logs.map((log, i) => (
+                      <div key={`${log.timestamp}-${i}`} className={`text-[8px] font-bold uppercase tracking-widest flex items-center gap-2 ${
+                        log.level === 'error' ? 'text-red-500/90' : log.level === 'success' ? 'text-emerald-500' : 'text-zinc-500'
+                      }`}>
+                        <span className="text-[6px] opacity-50">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
+                        <span className={i === 0 ? 'animate-pulse' : ''}>{log.message}</span>
                       </div>
                     ))}
                   </div>
@@ -446,6 +619,16 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
               exit={{ opacity: 0, y: -10 }}
               className="space-y-8"
             >
+              {status.type && (
+                <div className={`max-w-2xl mx-auto border rounded px-4 py-3 text-[10px] uppercase tracking-widest font-bold flex items-center gap-2 ${
+                  status.type === 'success'
+                    ? 'text-emerald-500 border-emerald-500/30 bg-emerald-500/5'
+                    : 'text-red-500 border-red-500/30 bg-red-500/5'
+                }`}>
+                  {status.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />} {status.message}
+                </div>
+              )}
+
               <div className="max-w-2xl mx-auto">
                 <div className="relative group">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500/40 group-focus-within:text-emerald-500 transition-colors" size={18} />
