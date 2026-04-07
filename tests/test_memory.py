@@ -159,3 +159,43 @@ def test_backup_and_restore_roundtrip(monkeypatch, tmp_path: Path):
     assert restore_result["status"] == "success"
     assert restore_result["imported"] == 1
     assert imported_items == [("Stored summary", "mem_1")]
+
+
+def test_restore_memories_from_payload(monkeypatch):
+    imported_items = []
+
+    def fake_save(entry: MemoryEntry, memory_id=None):
+        imported_items.append((entry.summary, memory_id))
+        return {"status": "success", "id": memory_id or "new_id"}
+
+    monkeypatch.setattr(memory, "_clear_collection", lambda: None)
+    monkeypatch.setattr(memory, "_all_ids", lambda: [])
+    monkeypatch.setattr(memory, "save_memory", fake_save)
+
+    payload = {
+        "version": 1,
+        "memories": [{
+            "id": "mem_payload_1",
+            "metadata": {
+                "timestamp": "2026-04-01T00:00:00Z",
+                "model_used": "gpt-5.3-codex",
+                "topic_tags": ["Testing"],
+                "priority": "High",
+            },
+            "summary": "payload memory",
+            "key_entities": {
+                "concepts": ["Vector DB"],
+                "tools": ["pytest"],
+                "decisions": ["Add payload import"],
+                "pending_actions": ["Run tests"],
+            },
+            "context_reference": "Payload Context",
+        }],
+    }
+
+    result = memory.restore_memories_from_payload(payload, mode="append")
+
+    assert result["status"] == "success"
+    assert result["imported"] == 1
+    assert result["source"] == "payload"
+    assert imported_items == [("payload memory", "mem_payload_1")]

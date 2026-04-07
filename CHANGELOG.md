@@ -6,6 +6,15 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-04-07
+- Add timestamped launcher logs with simple rotation for `.pcb_logs`
+- Add Database UI actions for full backup export and DB import (`append` / `replace`)
+- Add note-level backup export from the record detail modal
+- Add note import flow from JSON files in the Database view
+- Add backend payload restore endpoint for browser-driven imports (`POST /restore_memories_payload`)
+- Document runtime log behavior and UI backup/import flows in README
+- Expand backend tests for payload restore support
+
 ## [1.0.7] - 2026-04-06
 - Migrate memory storage from localStorage to ChromaDB filesystem persistence
 - Add backup and restore endpoints (`POST /backup_memories`, `POST /restore_memories`) with append/replace modes

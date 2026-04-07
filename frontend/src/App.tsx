@@ -20,7 +20,9 @@ import {
   RefreshCw,
   ZoomIn,
   ZoomOut,
-  Maximize
+  Maximize,
+  Download,
+  Upload
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as d3 from 'd3';
@@ -53,6 +55,13 @@ interface ClientLog {
   timestamp: string;
   level: 'info' | 'success' | 'error';
   message: string;
+}
+
+interface BackupPayload {
+  version: number;
+  created_at: string;
+  count: number;
+  memories: Memory[];
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -125,7 +134,10 @@ export default function App() {
   const [showLlmInstructions, setShowLlmInstructions] = useState(false);
   const [systemTime, setSystemTime] = useState(new Date().toISOString());
   const [logs, setLogs] = useState<ClientLog[]>([]);
+  const [dbImportMode, setDbImportMode] = useState<'append' | 'replace'>('append');
   const isJsonInputEmpty = !jsonInput.trim();
+  const dbImportInputRef = React.useRef<HTMLInputElement>(null);
+  const noteImportInputRef = React.useRef<HTMLInputElement>(null);
 
   const addLog = (message: string, level: ClientLog['level'] = 'info') => {
     const entry: ClientLog = {
@@ -163,6 +175,32 @@ export default function App() {
     }
   };
 
+  const downloadJsonFile = (filename: string, data: unknown) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const readJsonFile = async (file: File): Promise<unknown> => {
+    const text = await file.text();
+    return JSON.parse(text);
+  };
+
+  const buildBackupPayload = (items: Memory[]): BackupPayload => ({
+    version: 1,
+    created_at: new Date().toISOString(),
+    count: items.length,
+    memories: items,
+  });
+
+  const timestampForFilename = () => new Date().toISOString().replace(/[:.]/g, '-');
+
   const loadMemoriesFromBackend = async () => {
     addLog('Loading memories from backend...', 'info');
     try {
@@ -180,6 +218,166 @@ export default function App() {
     } catch (error) {
       addLog(getErrorMessage(error, 'Could not load memories from local backend.'), 'error');
       setStatus({ type: 'error', message: getErrorMessage(error, 'Could not load memories from local backend.') });
+      setTimeout(() => setStatus({ type: null, message: '' }), 3000);
+    }
+  };
+
+  const exportDatabaseBackup = async () => {
+    addLog('Preparing full database backup...', 'info');
+    try {
+      const response = await fetchWithTimeout(`${API_BASE_URL}/get_all_memories`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch database for backup');
+      }
+      const data = await response.json();
+      const normalized = Array.isArray(data)
+        ? data.map(normalizeMemory).filter((item): item is Memory => item !== null)
+        : [];
+      const payload = buildBackupPayload(normalized);
+      downloadJsonFile(`pcb_db_backup_${timestampForFilename()}.json`, payload);
+      addLog(`Database backup exported (${payload.count} memories).`, 'success');
+      setStatus({ type: 'success', message: `Database backup exported (${payload.count} memories).` });
+      setTimeout(() => setStatus({ type: null, message: '' }), 3000);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Failed to export database backup.');
+      addLog(message, 'error');
+      setStatus({ type: 'error', message });
+      setTimeout(() => setStatus({ type: null, message: '' }), 3000);
+    }
+  };
+
+  const triggerDatabaseImport = (mode: 'append' | 'replace') => {
+    setDbImportMode(mode);
+    dbImportInputRef.current?.click();
+  };
+
+  const importDatabaseBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    event.target.value = '';
+    addLog(`Importing database backup (${dbImportMode}) from ${file.name}...`, 'info');
+    try {
+      const parsed = await readJsonFile(file);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('Backup file must contain a JSON object payload.');
+      }
+
+      const response = await fetchWithTimeout(`${API_BASE_URL}/restore_memories_payload`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mode: dbImportMode,
+          payload: parsed,
+        }),
+      });
+
+      if (!response.ok) {
+        let detail = 'Database import failed';
+        try {
+          const errorPayload = await response.json();
+          if (errorPayload?.detail && typeof errorPayload.detail === 'string') {
+            detail = errorPayload.detail;
+          }
+        } catch (_parseError) {
+          // Ignore non-JSON error payloads.
+        }
+        throw new Error(detail);
+      }
+
+      const result = await response.json().catch(() => ({} as Record<string, unknown>));
+      const importedCount = typeof result.imported === 'number' ? result.imported : 0;
+
+      await loadMemoriesFromBackend();
+      addLog(`Database import completed (${importedCount} memories).`, 'success');
+      setStatus({ type: 'success', message: `Database import completed (${importedCount} memories).` });
+      setTimeout(() => setStatus({ type: null, message: '' }), 3000);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Failed to import database backup.');
+      addLog(message, 'error');
+      setStatus({ type: 'error', message });
+      setTimeout(() => setStatus({ type: null, message: '' }), 3000);
+    }
+  };
+
+  const exportMemoryBackup = (memory: Memory) => {
+    const payload = {
+      version: 1,
+      created_at: new Date().toISOString(),
+      count: 1,
+      memories: [memory],
+    };
+    downloadJsonFile(`pcb_memory_${memory.id}_${timestampForFilename()}.json`, payload);
+    addLog(`Memory ${memory.id} exported.`, 'success');
+    setStatus({ type: 'success', message: `Memory ${memory.id} exported.` });
+    setTimeout(() => setStatus({ type: null, message: '' }), 3000);
+  };
+
+  const triggerNoteImport = () => {
+    noteImportInputRef.current?.click();
+  };
+
+  const importNoteBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    event.target.value = '';
+    addLog(`Importing note backup from ${file.name}...`, 'info');
+
+    try {
+      const parsed = await readJsonFile(file);
+      let items: unknown[] = [];
+
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      } else if (parsed && typeof parsed === 'object') {
+        const asObject = parsed as Record<string, unknown>;
+        if (Array.isArray(asObject.memories)) {
+          items = asObject.memories;
+        } else {
+          items = [parsed];
+        }
+      }
+
+      const normalizedItems = items
+        .map(normalizeMemory)
+        .filter((item): item is Memory => item !== null);
+
+      if (normalizedItems.length === 0) {
+        throw new Error('No valid memory entries found in selected file.');
+      }
+
+      for (const item of normalizedItems) {
+        const payload = {
+          metadata: item.metadata,
+          summary: item.summary,
+          key_entities: item.key_entities,
+          context_reference: item.context_reference,
+        };
+
+        const response = await fetchWithTimeout(`${API_BASE_URL}/save_memory`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed importing memory: ${item.summary}`);
+        }
+      }
+
+      await loadMemoriesFromBackend();
+      addLog(`Imported ${normalizedItems.length} memory entries from note file.`, 'success');
+      setStatus({ type: 'success', message: `Imported ${normalizedItems.length} memory entries.` });
+      setTimeout(() => setStatus({ type: null, message: '' }), 3000);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Failed to import note backup file.');
+      addLog(message, 'error');
+      setStatus({ type: 'error', message });
       setTimeout(() => setStatus({ type: null, message: '' }), 3000);
     }
   };
@@ -630,6 +828,37 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
               )}
 
               <div className="max-w-2xl mx-auto">
+                <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                  <button
+                    onClick={exportDatabaseBackup}
+                    className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 font-bold py-2.5 rounded uppercase tracking-[0.2em] text-[9px] flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Download size={13} />
+                    Backup_DB
+                  </button>
+                  <button
+                    onClick={() => triggerDatabaseImport('append')}
+                    className="bg-black/40 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 font-bold py-2.5 rounded uppercase tracking-[0.2em] text-[9px] flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Upload size={13} />
+                    Import_DB_Append
+                  </button>
+                  <button
+                    onClick={() => triggerDatabaseImport('replace')}
+                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 font-bold py-2.5 rounded uppercase tracking-[0.2em] text-[9px] flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Upload size={13} />
+                    Import_DB_Replace
+                  </button>
+                  <button
+                    onClick={triggerNoteImport}
+                    className="bg-black/40 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 font-bold py-2.5 rounded uppercase tracking-[0.2em] text-[9px] flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Upload size={13} />
+                    Import_Note
+                  </button>
+                </div>
+
                 <div className="relative group">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500/40 group-focus-within:text-emerald-500 transition-colors" size={18} />
                   <input
@@ -649,6 +878,22 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                   )}
                 </div>
               </div>
+
+              <input
+                ref={dbImportInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={importDatabaseBackup}
+              />
+
+              <input
+                ref={noteImportInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={importNoteBackup}
+              />
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredMemories.length > 0 ? (
@@ -982,6 +1227,13 @@ INSTRUCTION: Please use this context to maintain consistency in our current sess
                 >
                   <Copy size={14} />
                   JSON
+                </button>
+                <button
+                  onClick={() => exportMemoryBackup(selectedMemory)}
+                  className="flex-1 bg-black/40 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 font-bold py-3 rounded uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 transition-all active:scale-95"
+                >
+                  <Download size={14} />
+                  Backup_Note
                 </button>
               </div>
             </motion.div>

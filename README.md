@@ -75,6 +75,14 @@ bash scripts/restore.sh backups/pcb_memories_YYYYMMDD_HHMMSS.json append
 `append` adds memories from backup to existing data.
 `replace` wipes current memories first, then imports backup content.
 
+From the React Database view you can also:
+- Export full DB backup (`Backup_DB`)
+- Import full DB backup in append mode (`Import_DB_Append`)
+- Import full DB backup in replace mode (`Import_DB_Replace`)
+- Import one or more note entries from JSON (`Import_Note`)
+
+From each memory detail modal you can export an individual note backup (`Backup_Note`).
+
 ### 9. (Optional) Manage services with PM2
 ```bash
 bash scripts/pcb_pm2.sh start
@@ -233,4 +241,18 @@ See [ROADMAP.md](ROADMAP.md) for the execution plan, including optional future t
 7. For local development, keep one terminal for backend/UI and another for frontend React dev server.
 8. Configure MCP using the Python executable inside `.venv` to avoid dependency mismatches.
 9. Run `bash scripts/backup.sh` before migrations or destructive maintenance.
+
+## 📋 Runtime Logs
+
+When using `bash scripts/start.sh` (or `python pcb.py start`), runtime output is written to:
+- `.pcb_logs/backend.log`
+- `.pcb_logs/frontend.log`
+
+Each log line includes an ISO timestamp and channel label (`[backend]` / `[frontend]`).
+
+Log rotation is enabled in the launcher:
+- Each log rotates at ~2 MB.
+- Up to 3 rotated files are kept (e.g. `backend.log.1`, `backend.log.2`, `backend.log.3`).
+
+If you use PM2 mode (`bash scripts/pcb_pm2.sh ...`), logs are managed by PM2 instead.
 

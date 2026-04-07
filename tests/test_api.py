@@ -95,3 +95,42 @@ async def test_backup_restore_endpoints(monkeypatch):
     assert backup_response.json()["status"] == "success"
     assert restore_response.status_code == 200
     assert restore_response.json()["imported"] == 1
+
+
+@pytest.mark.anyio
+async def test_restore_memories_payload_endpoint(monkeypatch):
+    monkeypatch.setattr(
+        api,
+        "restore_memories_from_payload",
+        lambda payload, mode: {"status": "success", "mode": mode, "imported": len(payload.get("memories", []))},
+    )
+
+    async with await _get_client() as client:
+        response = await client.post(
+            "/restore_memories_payload",
+            json={
+                "mode": "append",
+                "payload": {
+                    "version": 1,
+                    "memories": [{
+                        "metadata": {
+                            "timestamp": "2026-04-01T00:00:00Z",
+                            "model_used": "gpt-5.3-codex",
+                            "topic_tags": ["Testing"],
+                            "priority": "High",
+                        },
+                        "summary": "memory",
+                        "key_entities": {
+                            "concepts": ["concept"],
+                            "tools": ["tool"],
+                            "decisions": ["decision"],
+                            "pending_actions": ["pending"],
+                        },
+                        "context_reference": "ctx",
+                    }],
+                },
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "success", "mode": "append", "imported": 1}

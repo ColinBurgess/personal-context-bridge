@@ -2,7 +2,9 @@ import subprocess
 import sys
 import os
 import time
+import threading
 import psutil
+from datetime import datetime
 from typing import List
 
 # --- Constants ---
@@ -25,6 +27,8 @@ STREAMLIT_CMD = [
 ]
 REACT_CMD = ["npm", "--prefix", "frontend", "run", "dev"]
 STARTUP_WAIT_SECONDS = 2
+LOG_ROTATE_MAX_BYTES = 2 * 1024 * 1024
+LOG_ROTATE_KEEP = 3
 
 
 # --- PID file helpers ---
@@ -51,6 +55,26 @@ def _ensure_log_dir():
     os.makedirs(LOG_DIR, exist_ok=True)
 
 
+def _rotate_log_file(path: str):
+    if not os.path.exists(path):
+        return
+
+    if os.path.getsize(path) < LOG_ROTATE_MAX_BYTES:
+        return
+
+    oldest = f"{path}.{LOG_ROTATE_KEEP}"
+    if os.path.exists(oldest):
+        os.remove(oldest)
+
+    for index in range(LOG_ROTATE_KEEP - 1, 0, -1):
+        src = f"{path}.{index}"
+        dst = f"{path}.{index + 1}"
+        if os.path.exists(src):
+            os.replace(src, dst)
+
+    os.replace(path, f"{path}.1")
+
+
 def _frontend_cmd_and_url() -> tuple[list, str]:
     if UI_MODE == "streamlit":
         return STREAMLIT_CMD, "http://localhost:8501"
@@ -65,19 +89,42 @@ def _tail_log(path: str, lines: int = 20) -> str:
     return "".join(content[-lines:]).strip() or "(log is empty)"
 
 
+def _stream_process_output(process: subprocess.Popen, log_path: str, channel_label: str):
+    if process.stdout is None:
+        return
+
+    with open(log_path, "a", encoding="utf-8") as log_file:
+        log_file.write(f"\n--- session started {datetime.now().isoformat()} [{channel_label}] ---\n")
+        for line in process.stdout:
+            timestamp = datetime.now().isoformat(timespec="seconds")
+            message = line.rstrip("\n")
+            log_file.write(f"{timestamp} [{channel_label}] {message}\n")
+        log_file.write(f"--- session ended {datetime.now().isoformat()} [{channel_label}] ---\n")
+
+
 # --- Process helpers ---
 def _spawn(cmd: list, label: str) -> subprocess.Popen:
     _ensure_log_dir()
     log_path = BACKEND_LOG if "Backend" in label else FRONTEND_LOG
-    log_file = open(log_path, "a", encoding="utf-8")
+    _rotate_log_file(log_path)
+
     process = subprocess.Popen(
         cmd,
         stdin=subprocess.DEVNULL,
-        stdout=log_file,
+        stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        bufsize=1,
     )
-    log_file.close()
+
+    channel_label = "backend" if "Backend" in label else "frontend"
+    stream_thread = threading.Thread(
+        target=_stream_process_output,
+        args=(process, log_path, channel_label),
+        daemon=True,
+    )
+    stream_thread.start()
+
     print(f"  {label} started (PID: {process.pid})")
     return process
 

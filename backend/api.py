@@ -10,6 +10,7 @@ from backend.memory import (
     delete_memory,
     backup_memories_to_file,
     restore_memories_from_file,
+    restore_memories_from_payload,
 )
 
 app = FastAPI(title="Personal Context Bridge API")
@@ -34,6 +35,11 @@ class BackupRequest(BaseModel):
 
 class RestoreRequest(BaseModel):
     file_path: str
+    mode: str = "append"
+
+
+class RestorePayloadRequest(BaseModel):
+    payload: dict
     mode: str = "append"
 
 
@@ -83,6 +89,16 @@ async def api_backup_memories(request: BackupRequest):
 async def api_restore_memories(request: RestoreRequest):
     try:
         return restore_memories_from_file(request.file_path, request.mode)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/restore_memories_payload")
+async def api_restore_memories_payload(request: RestorePayloadRequest):
+    try:
+        return restore_memories_from_payload(request.payload, request.mode)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

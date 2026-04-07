@@ -180,16 +180,16 @@ def backup_memories_to_file(file_path: str) -> dict:
     return {"status": "success", "count": len(memories), "file": file_path}
 
 
-def restore_memories_from_file(file_path: str, mode: str = "append") -> dict:
+def _restore_memories_payload(payload: dict, mode: str, source_label: str) -> dict:
     if mode not in {"append", "replace"}:
         raise ValueError("mode must be 'append' or 'replace'")
 
-    with open(file_path, "r", encoding="utf-8") as f:
-        payload = json.load(f)
+    if not isinstance(payload, dict):
+        raise ValueError("Backup payload must be a JSON object")
 
     memories = payload.get("memories")
     if not isinstance(memories, list):
-        raise ValueError("Backup file is invalid: 'memories' must be a list")
+        raise ValueError("Backup payload is invalid: 'memories' must be a list")
 
     if mode == "replace":
         _clear_collection()
@@ -208,5 +208,18 @@ def restore_memories_from_file(file_path: str, mode: str = "append") -> dict:
         "status": "success",
         "mode": mode,
         "imported": imported,
-        "source_file": file_path,
+        "source": source_label,
     }
+
+
+def restore_memories_from_file(file_path: str, mode: str = "append") -> dict:
+    with open(file_path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+
+    result = _restore_memories_payload(payload, mode, source_label=file_path)
+    result["source_file"] = file_path
+    return result
+
+
+def restore_memories_from_payload(payload: dict, mode: str = "append") -> dict:
+    return _restore_memories_payload(payload, mode, source_label="payload")
