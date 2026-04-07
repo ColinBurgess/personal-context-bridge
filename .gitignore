@@ -8,6 +8,7 @@ coverage/
 !.env.example
 .venv/
 .pcb_pids
+.pcb_logs/
 local_memory/
 backups/
 __pycache__/
